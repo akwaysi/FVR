@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced Interactive FVR Map</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        /* Map container styling */
+        #map {
+            height: 80vh;
+            width: 100%;
+            border: 2px solid #ccc;
+        }
+
+        /* Legend styling */
+        .legend {
+            background: white;
+            padding: 10px;
+            line-height: 1.4;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+            border-radius: 3px;
+        }
+
+        /* Popup styling */
+        .leaflet-popup-content-wrapper {
+            background: #fff;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .leaflet-popup-content {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .leaflet-popup-tip-container {
+            width: 40px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+        // Initialize the map with a placeholder view (will be adjusted later)
+        var map = L.map('map');
+
+        // Add multiple basemap options
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        var satellite = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        var baseLayers = {
+            "OSM": osm,
+            "Satellite": satellite
+        };
+
+        osm.addTo(map);
+
+        // Layer control
+        L.control.layers(baseLayers).addTo(map);
+
+        // Load the CSV data using D3
+        d3.csv("Cleaned_Analysis_For_Leaflet.csv").then(function(data) {
+            var latLngs = []; // Array to hold all LatLngs
+
+            data.forEach(function(d) {
+                // Create a marker for each plot
+                var lat = +d.Latitude;
+                var lon = +d.Longitude;
+                var marker = L.circleMarker([lat, lon], {
+                    radius: 8,
+                    fillColor: getColor(d.Week_1_FVR),
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).bindPopup(createPopupContent(d)).addTo(map);
+
+                // Add the LatLng to the array
+                latLngs.push([lat, lon]);
+            });
+
+            // Fit the map to the bounds of the markers
+            var bounds = L.latLngBounds(latLngs);
+            map.fitBounds(bounds);
+        });
+
+        // Function to determine marker color based on FVR value
+        function getColor(fvr) {
+            return fvr > 2  ? '#4B0082' :   // Indigo for values greater than 2
+                   fvr > 1.5 ? '#800026' :  // Dark red
+                   fvr > 1.0 ? '#BD0026' :  // Red
+                   fvr > 0.8 ? '#E31A1C' :  // Dark orange
+                   fvr > 0.6 ? '#FC4E2A' :  // Orange
+                   fvr > 0.4 ? '#FD8D3C' :  // Light orange
+                   fvr > 0.2 ? '#FEB24C' :  // Light yellow-orange
+                               '#FFEDA0';   // Light yellow for values below 0.2
+        }
+
+        // Function to create popup content
+        function createPopupContent(d) {
+            return `<b>Plot: ${d.Plot}</b><br>
+                    Week 1 FVR: ${d.Week_1_FVR}<br>
+                    Week 2 FVR: ${d.Week_2_FVR}<br>
+                    Week 3 FVR: ${d.Week_3_FVR}<br>
+                    Week 4 FVR: ${d.Week_4_FVR}<br>
+                    Week 5 FVR: ${d.Week_5_FVR}<br>
+                    Week 6 FVR: ${d.Week_6_FVR}<br>
+                    Week 7 FVR: ${d.Week_7_FVR}<br>
+                    Week 8 FVR: ${d.Week_8_FVR}<br>
+                    Week 9 FVR: ${d.Week_9_FVR}<br>
+                    Week 10 FVR: ${d.Week_10_FVR}<br>
+                    Week 11 FVR: ${d.Week_11_FVR}`;
+        }
+
+        // Add a legend
+        var legend = L.control({position: 'bottomright'});
+        legend.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'legend'),
+                grades = [0.2, 0.4, 0.6, 0.8, 1.0, 1.5, 2.0],
+                labels = [];
+
+            // Loop through FVR intervals and generate a label with a colored square for each interval
+            for (var i = 0; i < grades.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + getColor(grades[i]) + '"></i> ' +
+                    grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+            }
+
+            div.innerHTML += '<i style="background:' + getColor(2.1) + '"></i> > 2.0+';
+            return div;
+        };
+        legend.addTo(map);
+    </script>
+</body>
+</html>
